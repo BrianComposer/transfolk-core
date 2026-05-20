@@ -1,0 +1,157 @@
+# ============================================================
+# Python virtual environments
+# ============================================================
+
+.venv/
+venv/
+venv2/
+venv311/
+ENV/
+env/
+
+
+# ============================================================
+# Python cache / bytecode
+# ============================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+
+# ============================================================
+# Build / packaging artifacts
+# ============================================================
+
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+pip-wheel-metadata/
+
+
+# ============================================================
+# Test / coverage / lint caches
+# ============================================================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.dmypy.json
+dmypy.json
+
+
+# ============================================================
+# Jupyter / notebooks
+# ============================================================
+
+.ipynb_checkpoints/
+
+
+# ============================================================
+# IDEs / editors
+# ============================================================
+
+.idea/
+.vscode/
+*.swp
+*.swo
+
+
+# ============================================================
+# OS generated files
+# ============================================================
+
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+
+# ============================================================
+# Logs
+# ============================================================
+
+*.log
+logs/
+
+
+# ============================================================
+# Local configuration / environment variables
+# ============================================================
+
+.env
+.env.*
+!.env.example
+
+
+# ============================================================
+# Local data, experiments and generated outputs
+# These should not live in transfolk-core as versioned content.
+# ============================================================
+
+data/
+data_tokenized/
+experiments/
+outputs/
+runs/
+tmp/
+temp/
+
+
+# ============================================================
+# Model artifacts / checkpoints
+# Core may define model classes, but should not version weights.
+# ============================================================
+
+models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+
+
+# ============================================================
+# Generated scientific outputs
+# Keep chart code in core, not generated figures/results.
+# ============================================================
+
+*.eps
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.pkl
+*.pickle
+*.joblib
+
+
+# ============================================================
+# Audio / symbolic generated files
+# Avoid accidentally committing generated corpora or samples.
+# ============================================================
+
+*.mid
+*.midi
+*.musicxml
+*.mxl
+*.xml
+*.abc
+*.wav
+*.mp3
