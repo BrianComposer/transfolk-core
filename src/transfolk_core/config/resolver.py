@@ -200,20 +200,15 @@ class PathResolver:
 
         return self.train_dir(model.architecture, model.experiment) / f"{filename}.json"
 
+    def model_snapshot_file(self, arch: TransformerArchitecture, exp: Experiment, model_id: str) -> Path:
+        """
+        Ruta del snapshot JSON de un modelo entrenado dentro del directorio de entrenamiento.
 
-    def model_snapshot_file(self, exp: Experiment, model_id: str) -> Path:
-        ts = self._safe(exp.music_context.time_signature)
-        ton = self._safe(exp.music_context.tonality)
-
-        filename = (
-            f"{model_id}_"
-            f"{exp.corpus.name}_"
-            f"{exp.tokenizer.name}_"
-            f"{ton}_"
-            f"{ts}_snapshot.json"
-        )
-
-        return self.train_dir(exp) / filename
+        El snapshot describe el modelo, su arquitectura, experimento, tokenizer,
+        runtime y demás metadata necesaria para reconstruirlo o exportarlo.
+        """
+        filename = f"{model_id}.json"
+        return self.train_dir(arch, exp) / filename
 
     def generated_new_file(self, model: Model, runtime: RuntimeGenerate) -> Path:
         timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
