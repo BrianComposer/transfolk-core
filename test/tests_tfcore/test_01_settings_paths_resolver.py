@@ -77,7 +77,7 @@ def run_tests(ctx):
         model = entities["model"]
         runtime = entities["runtime_generate"]
 
-        assert_path_inside(resolver.data_raw(exp.corpus), root)
+        assert_path_inside(resolver.data_normalized(exp.corpus), root)
         assert_path_inside(resolver.tokenize_dir(exp), root)
         assert_path_inside(resolver.train_dir(arch, exp), root)
 

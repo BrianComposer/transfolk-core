@@ -218,94 +218,6 @@ def trim_score2(orig_measures):
 
     return orig_measures
 
-# def clean_sparse_measures(measures, density_threshold=0.35):
-#     """
-#     Elimina compases con baja densidad de notas rodeados de compases vacíos o con silencios.
-#
-#     Parámetros
-#     ----------
-#     measures : list[music21.stream.Measure]
-#         Lista de compases.
-#     density_threshold : float
-#         Umbral mínimo de densidad de notas.
-#
-#     Returns
-#     -------
-#     list[music21.stream.Measure]
-#         Nueva lista de compases limpia.
-#     """
-#
-#     # -----------------------------
-#     # FUNCIONES AUXILIARES
-#     # -----------------------------
-#
-#     def measure_duration(m):
-#         return float(m.barDuration.quarterLength)
-#
-#     def note_duration(m):
-#         return sum(el.quarterLength for el in m.notes)
-#
-#     def density(m):
-#         total = measure_duration(m)
-#         if total == 0:
-#             return 0
-#         return note_duration(m) / total
-#
-#     def is_empty(m):
-#         return len(m.notesAndRests) == 0
-#
-#     def only_rests(m):
-#         if len(m.notesAndRests) == 0:
-#             return False
-#         return all(isinstance(el, note.Rest) for el in m.notesAndRests)
-#
-#     def low_density(m):
-#         return density(m) < density_threshold
-#
-#     # ---------------------------------
-#     # 1–2 Eliminación de compases sparse
-#     # ---------------------------------
-#
-#     cleaned = []
-#
-#     for i, m in enumerate(measures):
-#
-#         left = measures[i - 1] if i > 0 else None
-#         right = measures[i + 1] if i < len(measures) - 1 else None
-#
-#         remove = False
-#
-#         if low_density(m):
-#
-#             if i == len(measures) - 1:  # último compás
-#                 if left and (is_empty(left) or only_rests(left)):
-#                     remove = True
-#
-#             else:
-#                 cond_left = left and (is_empty(left) or only_rests(left))
-#                 cond_right = right and (is_empty(right) or only_rests(right))
-#
-#                 if cond_left or cond_right:
-#                     remove = True
-#
-#         if not remove:
-#             cleaned.append(m)
-#
-#     # ---------------------------------
-#     # 3 eliminar compases completamente vacíos
-#     # ---------------------------------
-#
-#     cleaned = [m for m in cleaned if not is_empty(m)]
-#
-#     # ---------------------------------
-#     # 4 eliminar compases con solo silencios
-#     # ---------------------------------
-#
-#     cleaned = [m for m in cleaned if not only_rests(m)]
-#
-#     return cleaned
-#
-
 def clean_sparse_measures(measures, density_threshold=0.35):
     """
     Limpia una lista de compases eliminando compases con baja densidad de notas
@@ -781,6 +693,246 @@ def fix_edge_time_signatures(measures):
 
 
 
+# def normalize_musicxml_corpus_new(
+#     data_dir,
+#     output_dir,
+#     allowed_durations,
+#     overwrite=False,
+#     delete_grace_notes=True,
+#     midi_min=57,
+#     midi_max=83,
+#     create_title=False,
+#     respect_time_signature_changes=False,
+#     respect_ties=True
+# ):
+#     """
+#     Limpieza y normalización métrica y rítmica avanzada de corpus MusicXML.
+#
+#     Fix importante:
+#     - Las grace notes NO se cuantizan, NO cuentan para el tiempo del compás y NO deben avanzar offsets.
+#       Si se preservan (delete_grace_notes=False), se insertan como objetos grace puros (duración métrica 0).
+#     """
+#
+#     # -------------------------------------------------------------------------
+#     # Main
+#     # -------------------------------------------------------------------------
+#     data_dir = Path(data_dir)
+#     output_dir = Path(output_dir)
+#     output_dir.mkdir(parents=True, exist_ok=True)
+#
+#     print(f"🔤 DATA NORMALIZATION: {data_dir}")
+#
+#     # Obtiene todas los xml del directorio
+#     files = list_musicxml_files(data_dir)
+#     print(f"\n🎼 Archivos detectados: {len(files)}\n")
+#
+#     total_read = 0
+#     total_processed = 0
+#     total_ignored = 0
+#     total_errors = 0
+#     total_saved = 0
+#
+#     for src in files:
+#         print(f"──────────────────────────────────────────────")
+#         print(f"Procesando: {src.name}")
+#
+#         out_path = output_dir / src.name
+#         if out_path.exists() and not overwrite:
+#             print(f"⏭️ Ya existe en salida y overwrite=False → omitido: {out_path.name}")
+#             total_ignored += 1
+#             continue
+#
+#         try:
+#             score = converter.parse(src)
+#             total_read += 1
+#         except Exception as e:
+#             print(f"⛔ Error al leer {src.name}: {e}")
+#             total_errors += 1
+#             continue
+#
+#         # 1. Crea la partitura nueva
+#         new_score = stream.Score()
+#         new_part = stream.Part()
+#         measures = []
+#
+#         # 2. Copia el Título = nombre del archivo
+#         if create_title:
+#             if new_score.metadata is None:
+#                 new_score.insert(0, metadata.Metadata())
+#             new_score.metadata.title = src.stem
+#
+#         # 3. Copiar armadura
+#         copy_key_signature(score, new_part)
+#
+#
+#         # 4. Obtener primera parte, revisando las voces 2, 3 y 4
+#         try:
+#             orig_part = get_part1_all_voices(score)
+#         except Exception as e:
+#             print(f"⚠️ {src.name}: Error obteniendo parts ({e}). Omitido.")
+#             total_ignored += 1
+#             continue
+#
+#
+#         # 5.A.  Eliminar compases iniciales/finales vacíos o de solo silencios ---
+#         orig_measures=[]
+#         try:
+#             orig_measures = list(orig_part.getElementsByClass(stream.Measure))
+#             orig_measures = trim_score2(orig_measures)
+#         except Exception as e:
+#             print(f"⚠️ {src.name}: Error eliminando compases vacios ({e}). Omitido.")
+#             total_ignored += 1
+#             continue
+#
+#         # 5.A.  Eliminar compases con muy baja densidad de notas/notas sueltas ---
+#         try:
+#             orig_measures = clean_sparse_measures(orig_measures, density_threshold=0.35)
+#         except Exception as e:
+#             print(f"⚠️ {src.name}: Error eliminando compases vacios ({e}). Omitido.")
+#             total_ignored += 1
+#             continue
+#
+#
+#
+#
+#         # 6. Estimar TIME SIGNATURE global (ignorando grace notes para el cálculo de longitudes) ---
+#         ts_to_use = ""
+#         time_signatures = []
+#         try:
+#             # ts_to_use, exp_len = estimate_time_signature(score, orig_measures)
+#             time_signatures = estimate_list_time_signatures(orig_measures)
+#             # new_part.insert(0.0, meter.TimeSignature(ts_to_use.ratioString))
+#             # print(f"✅ Compás asignado: {ts_to_use.ratioString} (duración esperada {float(exp_len):.2f})")
+#         except Exception as e:
+#             print(f"⚠️ {src.name}: Error estimando la lista global de TS ({e}). Omitido.")
+#             total_ignored += 1
+#             continue
+#
+#
+#         modified = False
+#
+#         # ---------------------------------------------------------------------
+#         # 7. Procesar todos los compases
+#         # ---------------------------------------------------------------------
+#
+#         for mi, m in enumerate(orig_measures):
+#             new_measure = stream.Measure(number=mi+1)
+#             elems = []
+#             ts_mes=None
+#
+#             #Detectamos cambios de Time signature
+#             try:
+#                 if len(m.flat.getElementsByClass("TimeSignature"))==0:
+#                     #Si el compás no tiene definida el time signature, asignamos el estimado
+#                     ts_mes=time_signatures[mi]
+#                     new_measure.insert(0.0, meter.TimeSignature(ts_mes.ratioString))
+#                 else:
+#                     ts_mes = m.flat.getElementsByClass("TimeSignature")[0]
+#                     if ts_mes.ratioString!=time_signatures[mi].ratioString:
+#                         ts_mes=time_signatures[mi]
+#                         print(f"🔧 TS inconsistente. Asignamos: {ts_mes.ratioString}")
+#                     new_measure.insert(0.0, meter.TimeSignature(ts_mes.ratioString))
+#
+#             except Exception as e:
+#                 print(f"Error al acceder a la time signature {e}")
+#                 pass
+#             exp_len = expected_len_from_ts(ts_mes)
+#
+#             # 8. Metemos notas, silencios y si procede notas de paso
+#             for el in m.notesAndRests:
+#                 if isinstance(el, harmony.ChordSymbol):
+#                     continue
+#
+#                 grace = is_grace(el)
+#                 if grace:
+#                     # -------------------------
+#                     # GRACE NOTES (NO CUANTIZAR)
+#                     # -------------------------
+#                     if delete_grace_notes:
+#                         modified = True
+#                         continue
+#                     else:
+#                         gn = create_grace_note(el, midi_min, midi_max)
+#                         elems.append(gn)
+#                         continue
+#                 else:
+#                     # -------------------------
+#                     # NOTAS Y SILENCIOS (cuantizar)
+#                     # -------------------------
+#                     # Aproxima la duracion a las duraciones permitidas
+#                     dur_frac = ql_to_frac(float(el.quarterLength))
+#                     dur_q = closest_allowed(dur_frac, allowed_durations)
+#                     if abs(dur_q - dur_frac) > Fraction(1, 192):
+#                         print(f"🔧 c.{m.number}: dur {float(dur_frac):.3f} ajustada a {float(dur_q):.3f}")
+#                         modified = True
+#                     elems.append(create_note_or_rest(el, dur_q, midi_min, midi_max, respect_ties))
+#
+#
+#             # =====================================================
+#             # 9. PRIMER COMPÁS: reordenar ANACRUSA
+#             # =====================================================
+#             if mi == 0 and len(elems) > 0:
+#                 if sort_anacruse(elems):
+#                     modified = True
+#
+#
+#             # 10. Calcular la Longitud total del compas (sin contar graces) ---
+#             total_len = sum_total_len_mesure(elems)
+#
+#             # =====================================================
+#             # 11 ULTIMO COMPÁS: revisar ties
+#             # =====================================================
+#             if mi == len(orig_measures) and len(elems) > 1:
+#                 elems= remove_last_note_tie(elems)
+#
+#
+#
+#             for e in elems:
+#                 new_measure.append(e)
+#
+#             measures.append(new_measure)
+#
+#
+#
+#
+#
+#         # =====================================================
+#         # 12 COMPROBAR LIGADURAS INCONEXAS
+#         # =====================================================
+#         clean_invalid_ties(measures)
+#         # --- Guardar ---
+#
+#         # =====================================================
+#         # 13 Detectar y corregir todas las anacrusas, inicio, fin
+#         # =====================================================
+#         measures = fix_edge_time_signatures(measures)
+#
+#
+#         new_part.append(measures)
+#
+#         new_score.append(new_part)
+#         try:
+#             new_score.write('musicxml', fp=str(out_path).replace(".mxl",".xml"))
+#             print(f"💾 Guardado → {out_path.name}")
+#             total_saved += 1
+#             total_processed += 1
+#         except Exception as e:
+#             print(f"❌ Error guardando {out_path.name}: {e}")
+#             total_errors += 1
+#
+#     # --- Informe final ---
+#     print("\n═══════════════════════════════════════════════")
+#     print("📊 INFORME FINAL")
+#     print(f" Archivos encontrados:   {len(files)}")
+#     print(f" Leídos correctamente:   {total_read}")
+#     print(f" Procesados y guardados: {total_processed}")
+#     print(f" Ignorados:              {total_ignored}")
+#     print(f" Errores:                {total_errors}")
+#     print(f" Archivos escritos:      {total_saved}")
+#     print("═══════════════════════════════════════════════")
+#     print("✅ Limpieza de corpus completada.")
+
+
 def normalize_musicxml_corpus_new(
     data_dir,
     output_dir,
@@ -820,14 +972,39 @@ def normalize_musicxml_corpus_new(
     total_errors = 0
     total_saved = 0
 
+    summary = {
+        "data_dir": str(data_dir),
+        "output_dir": str(output_dir),
+        "files_found": len(files),
+        "files": [],
+        "totals": {
+            "read": 0,
+            "processed": 0,
+            "ignored": 0,
+            "errors": 0,
+            "saved": 0
+        }
+    }
+
     for src in files:
         print(f"──────────────────────────────────────────────")
         print(f"Procesando: {src.name}")
+
+        file_summary = {
+            "file": src.name,
+            "status": None,
+            "output": None,
+            "messages": [],
+            "modified": False
+        }
 
         out_path = output_dir / src.name
         if out_path.exists() and not overwrite:
             print(f"⏭️ Ya existe en salida y overwrite=False → omitido: {out_path.name}")
             total_ignored += 1
+            file_summary["status"] = "ignored"
+            file_summary["messages"].append(f"Ya existe en salida y overwrite=False: {out_path.name}")
+            summary["files"].append(file_summary)
             continue
 
         try:
@@ -836,6 +1013,9 @@ def normalize_musicxml_corpus_new(
         except Exception as e:
             print(f"⛔ Error al leer {src.name}: {e}")
             total_errors += 1
+            file_summary["status"] = "error"
+            file_summary["messages"].append(f"Error al leer: {e}")
+            summary["files"].append(file_summary)
             continue
 
         # 1. Crea la partitura nueva
@@ -859,6 +1039,9 @@ def normalize_musicxml_corpus_new(
         except Exception as e:
             print(f"⚠️ {src.name}: Error obteniendo parts ({e}). Omitido.")
             total_ignored += 1
+            file_summary["status"] = "ignored"
+            file_summary["messages"].append(f"Error obteniendo parts: {e}")
+            summary["files"].append(file_summary)
             continue
 
 
@@ -870,6 +1053,9 @@ def normalize_musicxml_corpus_new(
         except Exception as e:
             print(f"⚠️ {src.name}: Error eliminando compases vacios ({e}). Omitido.")
             total_ignored += 1
+            file_summary["status"] = "ignored"
+            file_summary["messages"].append(f"Error eliminando compases vacios: {e}")
+            summary["files"].append(file_summary)
             continue
 
         # 5.A.  Eliminar compases con muy baja densidad de notas/notas sueltas ---
@@ -878,6 +1064,9 @@ def normalize_musicxml_corpus_new(
         except Exception as e:
             print(f"⚠️ {src.name}: Error eliminando compases vacios ({e}). Omitido.")
             total_ignored += 1
+            file_summary["status"] = "ignored"
+            file_summary["messages"].append(f"Error eliminando compases con baja densidad: {e}")
+            summary["files"].append(file_summary)
             continue
 
 
@@ -894,6 +1083,9 @@ def normalize_musicxml_corpus_new(
         except Exception as e:
             print(f"⚠️ {src.name}: Error estimando la lista global de TS ({e}). Omitido.")
             total_ignored += 1
+            file_summary["status"] = "ignored"
+            file_summary["messages"].append(f"Error estimando la lista global de TS: {e}")
+            summary["files"].append(file_summary)
             continue
 
 
@@ -919,10 +1111,14 @@ def normalize_musicxml_corpus_new(
                     if ts_mes.ratioString!=time_signatures[mi].ratioString:
                         ts_mes=time_signatures[mi]
                         print(f"🔧 TS inconsistente. Asignamos: {ts_mes.ratioString}")
+                        file_summary["messages"].append(
+                            f"TS inconsistente en compás {m.number}. Asignamos: {ts_mes.ratioString}"
+                        )
                     new_measure.insert(0.0, meter.TimeSignature(ts_mes.ratioString))
 
             except Exception as e:
                 print(f"Error al acceder a la time signature {e}")
+                file_summary["messages"].append(f"Error al acceder a la time signature: {e}")
                 pass
             exp_len = expected_len_from_ts(ts_mes)
 
@@ -938,6 +1134,9 @@ def normalize_musicxml_corpus_new(
                     # -------------------------
                     if delete_grace_notes:
                         modified = True
+                        file_summary["messages"].append(
+                            f"Grace note eliminada en compás {m.number}"
+                        )
                         continue
                     else:
                         gn = create_grace_note(el, midi_min, midi_max)
@@ -953,6 +1152,9 @@ def normalize_musicxml_corpus_new(
                     if abs(dur_q - dur_frac) > Fraction(1, 192):
                         print(f"🔧 c.{m.number}: dur {float(dur_frac):.3f} ajustada a {float(dur_q):.3f}")
                         modified = True
+                        file_summary["messages"].append(
+                            f"c.{m.number}: dur {float(dur_frac):.3f} ajustada a {float(dur_q):.3f}"
+                        )
                     elems.append(create_note_or_rest(el, dur_q, midi_min, midi_max, respect_ties))
 
 
@@ -962,6 +1164,7 @@ def normalize_musicxml_corpus_new(
             if mi == 0 and len(elems) > 0:
                 if sort_anacruse(elems):
                     modified = True
+                    file_summary["messages"].append("Primer compás: anacrusa reordenada")
 
 
             # 10. Calcular la Longitud total del compas (sin contar graces) ---
@@ -972,6 +1175,7 @@ def normalize_musicxml_corpus_new(
             # =====================================================
             if mi == len(orig_measures) and len(elems) > 1:
                 elems= remove_last_note_tie(elems)
+                file_summary["messages"].append("Último compás: revisión de ties aplicada")
 
 
 
@@ -1004,9 +1208,17 @@ def normalize_musicxml_corpus_new(
             print(f"💾 Guardado → {out_path.name}")
             total_saved += 1
             total_processed += 1
+
+            file_summary["status"] = "saved"
+            file_summary["output"] = str(out_path).replace(".mxl",".xml")
+            file_summary["modified"] = modified
+            summary["files"].append(file_summary)
         except Exception as e:
             print(f"❌ Error guardando {out_path.name}: {e}")
             total_errors += 1
+            file_summary["status"] = "error"
+            file_summary["messages"].append(f"Error guardando {out_path.name}: {e}")
+            summary["files"].append(file_summary)
 
     # --- Informe final ---
     print("\n═══════════════════════════════════════════════")
@@ -1020,6 +1232,11 @@ def normalize_musicxml_corpus_new(
     print("═══════════════════════════════════════════════")
     print("✅ Limpieza de corpus completada.")
 
+    summary["totals"]["read"] = total_read
+    summary["totals"]["processed"] = total_processed
+    summary["totals"]["ignored"] = total_ignored
+    summary["totals"]["errors"] = total_errors
+    summary["totals"]["saved"] = total_saved
 
-
+    return summary
 

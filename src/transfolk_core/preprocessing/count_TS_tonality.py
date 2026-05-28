@@ -4,9 +4,12 @@ from collections import defaultdict
 from music21 import converter, stream
 
 
+
 def count_ts_mode_distribution(
     corpus_path: str,
-    output_dir: str = None,
+    output_dir: str,
+    dist_path: str,
+    norm_path: str,
     save_json: bool = True
 ):
     """
@@ -143,8 +146,8 @@ def count_ts_mode_distribution(
     if save_json:
         os.makedirs(output_dir, exist_ok=True)
 
-        dist_path = os.path.join(output_dir, "ts_mode_distribution.json")
-        norm_path = os.path.join(output_dir, "ts_mode_distribution_normalized.json")
+        #dist_path = os.path.join(output_dir, "ts_mode_distribution.json")
+        #norm_path = os.path.join(output_dir, "ts_mode_distribution_normalized.json")
 
         with open(dist_path, "w", encoding="utf-8") as f:
             json.dump(distribution_json, f, indent=4)

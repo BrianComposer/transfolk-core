@@ -2,6 +2,10 @@ import os
 import math
 import copy
 from collections import defaultdict
+from pathlib import Path
+from datetime import datetime
+import json
+
 
 from music21 import converter, meter, stream, note, chord, tempo, key
 
@@ -401,6 +405,21 @@ def midi_folder_to_musicxml(
     converted = 0
     failed = []
 
+    report = {
+        "process": "MIDI_TO_MUSICXML",
+        "input_folder": str(input_folder),
+        "output_folder": str(output_folder),
+        "recursive": recursive,
+        "corpus_name": corpus_name,
+        "allowed_durations": list(allowed_durations),
+        "candidate_time_signatures": list(candidate_time_signatures),
+        "midi_files_detected": 0,
+        "converted": 0,
+        "failed_count": 0,
+        "failed": failed,
+        "files": []
+    }
+
     if recursive:
         walker = []
         for root, _, files in os.walk(input_folder):
@@ -412,6 +431,8 @@ def midi_folder_to_musicxml(
     for root, fname in walker:
         if not fname.lower().endswith((".mid", ".midi")):
             continue
+
+        report["midi_files_detected"] += 1
 
         in_path = os.path.join(root, fname)
 
@@ -426,6 +447,14 @@ def midi_folder_to_musicxml(
 
         out_path = os.path.join(out_subdir, out_name)
 
+        file_report = {
+            "file": fname,
+            "input_path": in_path,
+            "output_path": out_path,
+            "status": None,
+            "error": None
+        }
+
         try:
             midi_to_musicxml_with_inferred_meter(
                 midi_path=in_path,
@@ -439,8 +468,16 @@ def midi_folder_to_musicxml(
             )
             converted += 1
 
+            file_report["status"] = "converted"
+            report["files"].append(file_report)
+
         except Exception as e:
             failed.append((in_path, str(e)))
+
+            file_report["status"] = "failed"
+            file_report["error"] = str(e)
+            report["files"].append(file_report)
+
             if verbose:
                 print(f"[ERROR] {in_path}: {e}")
 
@@ -451,7 +488,7 @@ def midi_folder_to_musicxml(
             for path, err in failed:
                 print(f" - {path}: {err}")
 
-    return {
-        "converted": converted,
-        "failed": failed
-    }
+    report["converted"] = converted
+    report["failed_count"] = len(failed)
+
+    return report

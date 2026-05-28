@@ -2,6 +2,7 @@ from transfolk_core.metrics import corpus_membership_classifier
 import numpy as np
 import os
 import glob
+from pathlib import Path
 import matplotlib.pyplot as plt
 from music21 import converter
 
@@ -16,7 +17,7 @@ plt.rcParams.update({
 ############################################################################
 # CURVA MEMBERSHIP VS TEMPERATURE (FIDELITY CURVE)
 ############################################################################
-def Style_Fidelity_Curve(DATA_DIR, PROD_DIR, CORPUS, ALGORITHM, TIME_SIGNATURE, TONALITY, TEMPERATURES, font_size = 14, axis_size=12, show_tittle=True, show_chart=True):
+def Style_Fidelity_Curve(DATA_DIR, MODEL_DIR, PROD_DIR, CORPUS, ALGORITHM, TIME_SIGNATURE, TONALITY, TEMPERATURES, font_size = 14, axis_size=12, show_tittle=True, show_chart=True):
     # Curva de calibración estilística (Style Fidelity Curve)
     #
     # Eje X: temperatura.
@@ -25,7 +26,7 @@ def Style_Fidelity_Curve(DATA_DIR, PROD_DIR, CORPUS, ALGORITHM, TIME_SIGNATURE, 
     # Puede añadirse una segunda línea para “Perceptual rating” (evaluación humana), mostrando correlación.
 
 
-    model_dir = rf"classifier\{CORPUS}"  # carpeta del modelo del clasificador
+    model_dir = MODEL_DIR #rf"classifier\{CORPUS}"  # carpeta del modelo del clasificador
     globalMemberships = []
     stdMemberships = []
 
@@ -142,7 +143,15 @@ def Membership_Entropy_Scatter_Plot(MODEL_DIR, TIME_SIGNATURE, TONALITY, PROD_DI
 
     for TEMPERATURE in TEMPERATURES:
         print(f"🔥 Midiendo membership global para temperatura: {TEMPERATURE}")
-        new_dir = fr"{PROD_DIR}/{TIME_SIGNATURE.replace('/', '_')}/{TONALITY}/{TEMPERATURE:.1f}"
+        #new_dir = fr"{PROD_DIR}/{TIME_SIGNATURE.replace('/', '_')}/{TONALITY}/{TEMPERATURE:.1f}"
+        new_dir = (
+                Path(PROD_DIR)
+                / TIME_SIGNATURE.replace("/", "_")
+                / TONALITY
+                / f"{TEMPERATURE:.1f}"
+        )
+
+
         average, std = corpus_membership_classifier.evaluate_model(new_dir, model_dir)
         globalMemberships.append(average)
         stdMemberships.append(std)

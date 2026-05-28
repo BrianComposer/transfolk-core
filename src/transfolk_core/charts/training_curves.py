@@ -496,13 +496,15 @@ def plot_training_loss_all_paper(
 
     os.makedirs(charts_dir, exist_ok=True)
 
+    archs_label = "_".join(architectures_names)
+
     out_png = os.path.join(
         charts_dir,
-        f"training_curve_todos_{corpus}_{algorithm}.png"
+        f"training_curve_{corpus}_{archs_label}.png"
     )
     out_eps = os.path.join(
         charts_dir,
-        f"training_curve_todos_{corpus}_{algorithm}.eps"
+        f"training_curve_{corpus}_{archs_label}.eps"
     )
 
     plt.savefig(out_png, dpi=600, bbox_inches="tight")
